@@ -70,19 +70,19 @@ class CaloTowerBuilder : public SubsysReco
 
 
 
-
-
- private:
-  int _nevents;
-  Event *_event;
-
-
-
   void set_detector_type(CaloTowerBuilder::DetectorSystem dettype)
   {
     m_dettype = dettype;
     return;
   }
+
+
+
+
+
+ private:
+  int _nevents;
+  Event *_event;
 
 
 
@@ -96,9 +96,9 @@ class CaloTowerBuilder : public SubsysReco
 
 
 
-
   CaloTowerBuilder::DetectorSystem m_dettype; 
   ClonesContainer *m_CaloInfoContainer; //! Calo info
+  std::string m_detector;
 
 
 };

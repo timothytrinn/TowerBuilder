@@ -14,7 +14,7 @@ R__LOAD_LIBRARY(libCaloTowerBuilder.so)
 
 #endif
 
-void Fun4All_CaloWaveFormSim(const char *fname = "/sphenix/data/data02/sphenix/cemc/combinedEvents/EmCalSEB01-000000222-0000_x.prdf", const char *outfile = "trees/0.root")
+void Fun4All_TowerBuilder(const char *fname = "/sphenix/data/data02/sphenix/cemc/combinedEvents/EmCalSEB01-000000222-0000_x.prdf", const char *outfile = "trees/0.root")
 {
   gSystem->Load("libg4dst");
   Fun4AllServer *se = Fun4AllServer::instance();
@@ -28,7 +28,7 @@ void Fun4All_CaloWaveFormSim(const char *fname = "/sphenix/data/data02/sphenix/c
 
 
   CaloTowerBuilder *ca = new CaloTowerBuilder();
-  // ca->Detector("CEMC");
+  ca->set_detector_type(CaloTowerBuilder::CEMC);
   se->registerSubsystem(ca);
 
 

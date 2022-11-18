@@ -27,6 +27,7 @@ CaloTowerBuilder::CaloTowerBuilder(const std::string &name):
  SubsysReco(name)
  , m_dettype(CaloTowerBuilder::CEMC)
  , m_CaloInfoContainer(0)
+ , m_detector("CEMC")
 {
   std::cout << "CaloTowerBuilder::CaloTowerBuilder(const std::string &name) Calling ctor" << std::endl;
 }
@@ -49,7 +50,22 @@ int CaloTowerBuilder::Init(PHCompositeNode *topNode)
   WaveformProcessing->set_template_file("testbeam_cemc_template.root");
   WaveformProcessing->initialize_processing();
 
-
+  if (m_dettype == CaloTowerBuilder::CEMC)
+    {
+      m_detector = "CEMC";
+    }
+  else if (m_dettype == CaloTowerBuilder::HCALIN)
+    {
+      m_detector = "HCALIN";
+    }
+  else if (m_dettype == CaloTowerBuilder::HCALOUT)
+    {
+      m_detector = "HCALOUT";
+    }
+  else if (m_dettype == CaloTowerBuilder::EPD)
+    {
+      m_detector = "EPD";
+    }
 
   return Fun4AllReturnCodes::EVENT_OK;
 }
@@ -110,7 +126,7 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
   std::vector<std::vector<float>> processed_waveforms =  WaveformProcessing->process_waveform(waveforms);
 
   int n_channels = processed_waveforms.size();
-  std::cout << n_channels << std::endl;
+  // std::cout << n_channels << std::endl;
   for (int i = 0 ; i < n_channels;i++)
     {
       CaloInfo *caloinfo = new CaloInfo();
@@ -124,19 +140,16 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
   //Test Script to see if i can read things back:
 
 
-    int csize = m_CaloInfoContainer->size();
+    // int csize = m_CaloInfoContainer->size();
 
 
-    for(int j = 0; j < csize; j++)
-    {
-      CaloInfo *ci = m_CaloInfoContainer->at(j);
-      float v1 = ci->getTime();
-      float v2 = ci->getAmplitude();
-      std::cout << "time: " << v1 << ", " << "Amplitude: " << v2 << std::endl;
-    }
-
-
-
+    // for(int j = 0; j < csize; j++)
+    // {
+    //   CaloInfo *ci = m_CaloInfoContainer->at(j);
+    //   float v1 = ci->getTime();
+    //   float v2 = ci->getAmplitude();
+    //   // std::cout << "time: " << v1 << ", " << "Amplitude: " << v2 << std::endl;
+    // }
 
 
 
@@ -144,7 +157,10 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
 
 
 
-  std::cout << "CaloTowerBuilder::process_event(PHCompositeNode *topNode) Processing Event" << std::endl;
+
+
+
+  // std::cout << "CaloTowerBuilder::process_event(PHCompositeNode *topNode) Processing Event" << std::endl;
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
@@ -193,33 +209,10 @@ void CaloTowerBuilder::CreateNodeTree(PHCompositeNode *topNode)
     topNode->addNode(dst_node);
   }
 
-  // DATA nodes
-  // data_node = static_cast<PHCompositeNode *>(
-  //     nodeItr.findFirst("PHCompositeNode", "RAW_DATA"));
-  // if (!data_node)
-  // {
-  //   if (Verbosity())
-  //     std::cout << "PHComposite node created: RAW_DATA" << std::endl;
-  //   data_node = new PHCompositeNode("RAW_DATA");
-  //   dst_node->addNode(data_node);
-  // }
-
-  // HCAL Towers
-  // hcalin_towers = new RawTowerContainer(RawTowerDefs::HCALIN);
-  // PHIODataNode<PHObject> *tower_node = new PHIODataNode<PHObject>(
-  //     hcalin_towers, "TOWER_RAW_HCALIN", "PHObject");
-  // data_node->addNode(tower_node);
-
-  // hcalout_towers = new RawTowerContainer(RawTowerDefs::HCALOUT);
-  // tower_node = new PHIODataNode<PHObject>(hcalout_towers,
-  //                                         "TOWER_RAW_HCALOUT", "PHObject");
-  // data_node->addNode(tower_node);
-
-  // EMCAL towers
+  // towers
   m_CaloInfoContainer = new ClonesContainer();
 
-  PHIODataNode<PHObject> *emcal_towerNode =
-      new PHIODataNode<PHObject>(m_CaloInfoContainer, "TOWER_CEMC", "PHObject");
+  PHIODataNode<PHObject> *emcal_towerNode = new PHIODataNode<PHObject>(m_CaloInfoContainer, Form("TOWERS_%s",m_detector.c_str()), "PHObject");
   dst_node->addNode(emcal_towerNode);
 }
 
