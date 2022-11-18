@@ -99,6 +99,9 @@ class CaloTowerBuilder : public SubsysReco
   CaloTowerBuilder::DetectorSystem m_dettype; 
   ClonesContainer *m_CaloInfoContainer; //! Calo info
   std::string m_detector;
+  int m_packet_low;
+  int m_packet_high;
+
 
 
 };

@@ -28,6 +28,8 @@ CaloTowerBuilder::CaloTowerBuilder(const std::string &name):
  , m_dettype(CaloTowerBuilder::CEMC)
  , m_CaloInfoContainer(0)
  , m_detector("CEMC")
+ , m_packet_low(6017)
+ , m_packet_high(6032)
 {
   std::cout << "CaloTowerBuilder::CaloTowerBuilder(const std::string &name) Calling ctor" << std::endl;
 }
@@ -47,26 +49,37 @@ int CaloTowerBuilder::Init(PHCompositeNode *topNode)
 
   WaveformProcessing = new CaloWaveformProcessing();
   WaveformProcessing->set_processing_type(CaloWaveformProcessing::TEMPLATE);
-  WaveformProcessing->set_template_file("testbeam_cemc_template.root");
-  WaveformProcessing->initialize_processing();
 
   if (m_dettype == CaloTowerBuilder::CEMC)
     {
       m_detector = "CEMC";
+      // m_packet_low = 6001;
+      // m_packet_high = 6128;
+      m_packet_low = 6017;   // temporary to run over the subset file i have
+      m_packet_high = 6032; // temporary to run over the subset file i have
+      WaveformProcessing->set_template_file("testbeam_cemc_template.root");
     }
   else if (m_dettype == CaloTowerBuilder::HCALIN)
     {
       m_detector = "HCALIN";
-    }
+      WaveformProcessing->set_template_file("testbeam_ihcal_template.root");
+   }
   else if (m_dettype == CaloTowerBuilder::HCALOUT)
     {
       m_detector = "HCALOUT";
-    }
+      m_packet_low = 8001;
+      m_packet_high = 6032;
+      WaveformProcessing->set_template_file("testbeam_ohcal_template.root");
+   }
   else if (m_dettype == CaloTowerBuilder::EPD)
     {
       m_detector = "EPD";
-    }
+      WaveformProcessing->set_template_file("testbeam_cemc_template.root"); // place holder until we have EPD templates
+  }
 
+
+
+  WaveformProcessing->initialize_processing();
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
@@ -90,27 +103,19 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
     std::cout << "CaloUnpackPRDF::Process_Event - Event not found" << std::endl;
     return -1;
   }
-  // std::cout << _event->getEvtType() << std::endl;
   if ( _event->getEvtType() >= 7)/// special event where we do not read out the calorimeters
     {
       return Fun4AllReturnCodes::DISCARDEVENT;
     }
-
   std::vector<std::vector<float>> waveforms;
 
-
-  // for ( int pid = 6001; pid <= 6128; pid++)
-  for ( int pid = 6017; pid <= 6032; pid++)
+  for ( int pid = m_packet_low; pid <= m_packet_high; pid++)
     { 
-      // std::cout << 1 << std::endl;
       Packet *packet = _event->getPacket(pid);
-      // packet->identify();
       if (!packet)
 	{
 	  return Fun4AllReturnCodes::DISCARDEVENT;
 	}      
-      // std::cout << 2 << std::endl;
-
       for ( int channel = 0; channel <  packet->iValue(0,"CHANNELS"); channel++)
 	{
 	  std::vector<float> waveform;
@@ -126,7 +131,6 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
   std::vector<std::vector<float>> processed_waveforms =  WaveformProcessing->process_waveform(waveforms);
 
   int n_channels = processed_waveforms.size();
-  // std::cout << n_channels << std::endl;
   for (int i = 0 ; i < n_channels;i++)
     {
       CaloInfo *caloinfo = new CaloInfo();
@@ -137,30 +141,19 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
 
 
 
-  //Test Script to see if i can read things back:
-
-
+  //Quick test script to see if i can read things back:
+  //-----------------------------------------------------------------------
     // int csize = m_CaloInfoContainer->size();
-
-
     // for(int j = 0; j < csize; j++)
     // {
     //   CaloInfo *ci = m_CaloInfoContainer->at(j);
     //   float v1 = ci->getTime();
     //   float v2 = ci->getAmplitude();
-    //   // std::cout << "time: " << v1 << ", " << "Amplitude: " << v2 << std::endl;
+    //   std::cout << "time: " << v1 << ", " << "Amplitude: " << v2 << std::endl;
     // }
+  //-----------------------------------------------------------------------
 
 
-
-
-
-
-
-
-
-
-  // std::cout << "CaloTowerBuilder::process_event(PHCompositeNode *topNode) Processing Event" << std::endl;
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
