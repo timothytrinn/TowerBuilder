@@ -19,14 +19,16 @@
 #include <Event/EventTypes.h>
 #include <Event/packet.h>
 
-#include <savecatonode/ClonesContainer.h>
-#include <savecatonode/CaloInfo.h>
+
+#include <calobase/TowerInfoContainer.h>
+#include <calobase/TowerInfo.h>
+
 
 //____________________________________________________________________________..
 CaloTowerBuilder::CaloTowerBuilder(const std::string &name):
  SubsysReco(name)
  , m_dettype(CaloTowerBuilder::CEMC)
- , m_CaloInfoContainer(0)
+ , m_TowerInfoContainer(0)
  , m_detector("CEMC")
  , m_packet_low(6017)
  , m_packet_high(6032)
@@ -44,40 +46,37 @@ CaloTowerBuilder::~CaloTowerBuilder()
 int CaloTowerBuilder::Init(PHCompositeNode *topNode)
 {
   std::cout << "CaloTowerBuilder::Init(PHCompositeNode *topNode) Initializing" << std::endl;
-
-
-
   WaveformProcessing = new CaloWaveformProcessing();
   WaveformProcessing->set_processing_type(CaloWaveformProcessing::TEMPLATE);
 
   if (m_dettype == CaloTowerBuilder::CEMC)
     {
       m_detector = "CEMC";
-      // m_packet_low = 6001;
-      // m_packet_high = 6128;
-      m_packet_low = 6017;   // temporary to run over the subset file i have
-      m_packet_high = 6032; // temporary to run over the subset file i have
+      m_packet_low = 6001;
+      m_packet_high = 6128;
       WaveformProcessing->set_template_file("testbeam_cemc_template.root");
     }
   else if (m_dettype == CaloTowerBuilder::HCALIN)
     {
       m_detector = "HCALIN";
+      m_packet_low = 7001;
+      m_packet_high = 7032;
       WaveformProcessing->set_template_file("testbeam_ihcal_template.root");
    }
   else if (m_dettype == CaloTowerBuilder::HCALOUT)
     {
       m_detector = "HCALOUT";
       m_packet_low = 8001;
-      m_packet_high = 6032;
+      m_packet_high = 8032;
       WaveformProcessing->set_template_file("testbeam_ohcal_template.root");
    }
   else if (m_dettype == CaloTowerBuilder::EPD)
     {
       m_detector = "EPD";
+      m_packet_low = 9001;
+      m_packet_high = 9002;  
       WaveformProcessing->set_template_file("testbeam_cemc_template.root"); // place holder until we have EPD templates
   }
-
-
 
   WaveformProcessing->initialize_processing();
   return Fun4AllReturnCodes::EVENT_OK;
@@ -103,7 +102,7 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
     std::cout << "CaloUnpackPRDF::Process_Event - Event not found" << std::endl;
     return -1;
   }
-  if ( _event->getEvtType() >= 7)/// special event where we do not read out the calorimeters
+  if ( _event->getEvtType() >= 8)/// special events where we do not read out the calorimeters
     {
       return Fun4AllReturnCodes::DISCARDEVENT;
     }
@@ -113,7 +112,7 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
     { 
       Packet *packet = _event->getPacket(pid);
       if (!packet)
-	{
+	{// TODO: consider replacing DISCARDEVENT with filling empty towers... low need
 	  return Fun4AllReturnCodes::DISCARDEVENT;
 	}      
       for ( int channel = 0; channel <  packet->iValue(0,"CHANNELS"); channel++)
@@ -127,31 +126,26 @@ int CaloTowerBuilder::process_event(PHCompositeNode *topNode)
 	  waveform.clear();
 	}
     }
-
+  
+  
   std::vector<std::vector<float>> processed_waveforms =  WaveformProcessing->process_waveform(waveforms);
-
   int n_channels = processed_waveforms.size();
   for (int i = 0 ; i < n_channels;i++)
     {
-      CaloInfo *caloinfo = new CaloInfo();
-      caloinfo->setTime(processed_waveforms.at(i).at(0));
-      caloinfo->setAmplitude(processed_waveforms.at(i).at(1));
-      m_CaloInfoContainer->add(caloinfo,i);
+      TowerInfo *towerinfo = new TowerInfo();
+      if (waveforms.at(i).size() < nsamples;i++) // zero suppressed channels
+	{
+	  towerinfo->setTime(-1); // Flag tower as zero suppressed
+	  towerinfo->setAmplitude(waveforms.at(i).at(0)-waveforms.at(i).at(1)); // zero suppression returns val at fixed time, and pedestal
+	}
+      else
+	{
+	  towerinfo->setTime(processed_waveforms.at(i).at(0));
+	  towerinfo->setAmplitude(processed_waveforms.at(i).at(1));
+	}
+      m_TowerInfoContainer->add(towerinfo,i);
     }
 
-
-
-  //Quick test script to see if i can read things back:
-  //-----------------------------------------------------------------------
-    // int csize = m_CaloInfoContainer->size();
-    // for(int j = 0; j < csize; j++)
-    // {
-    //   CaloInfo *ci = m_CaloInfoContainer->at(j);
-    //   float v1 = ci->getTime();
-    //   float v2 = ci->getAmplitude();
-    //   std::cout << "time: " << v1 << ", " << "Amplitude: " << v2 << std::endl;
-    // }
-  //-----------------------------------------------------------------------
 
 
   return Fun4AllReturnCodes::EVENT_OK;
@@ -194,18 +188,18 @@ void CaloTowerBuilder::CreateNodeTree(PHCompositeNode *topNode)
   PHNodeIterator nodeItr(topNode);
   // DST node
   dst_node = static_cast<PHCompositeNode *>(
-      nodeItr.findFirst("PHCompositeNode", "DST"));
+					    nodeItr.findFirst("PHCompositeNode", "DST"));
   if (!dst_node)
-  {
+    {
     std::cout << "PHComposite node created: DST" << std::endl;
     dst_node = new PHCompositeNode("DST");
     topNode->addNode(dst_node);
-  }
+    }
 
   // towers
-  m_CaloInfoContainer = new ClonesContainer();
+  m_TowerInfoContainer = new ClonesContainer();
 
-  PHIODataNode<PHObject> *emcal_towerNode = new PHIODataNode<PHObject>(m_CaloInfoContainer, Form("TOWERS_%s",m_detector.c_str()), "PHObject");
+  PHIODataNode<PHObject> *emcal_towerNode = new PHIODataNode<PHObject>(m_TowerInfoContainer, Form("TOWERS_%s",m_detector.c_str()), "PHObject");
   dst_node->addNode(emcal_towerNode);
 }
 

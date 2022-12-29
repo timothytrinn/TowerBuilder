@@ -30,8 +30,8 @@
 #include <utility>  // for pair
 
 
-#include <savecatonode/ClonesContainer.h>
-#include <savecatonode/CaloInfo.h>
+#include <calobase/TowerInfoContainer.h>
+#include <calobase/TowerInfo.h>
 
 #include <string>
 
@@ -97,7 +97,7 @@ class CaloTowerBuilder : public SubsysReco
 
 
   CaloTowerBuilder::DetectorSystem m_dettype; 
-  ClonesContainer *m_CaloInfoContainer; //! Calo info
+  TowerInfoContainer *m_TowerInfoContainer; //! Calo info
   std::string m_detector;
   int m_packet_low;
   int m_packet_high;
